@@ -9,7 +9,6 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
-	"github.com/whosonfirst/go-whosonfirst-spr"
 	"log"
 )
 
