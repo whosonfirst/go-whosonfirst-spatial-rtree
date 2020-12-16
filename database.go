@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/paulmach/go.geojson"
 	"github.com/skelterjohn/geom"
 	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"
@@ -12,7 +13,6 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-spatial/cache"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
-	"github.com/whosonfirst/go-whosonfirst-spatial/geojson"
 	"github.com/whosonfirst/go-whosonfirst-spr"
 	"net/url"
 	"strconv"
@@ -231,16 +231,16 @@ func (r *RTreeSpatialDatabase) PointInPolygonWithChannels(ctx context.Context, r
 	return
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coord *geom.Coord) (*geojson.GeoJSONFeatureCollection, error) {
+func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coord *geom.Coord) (*geojson.FeatureCollection, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	rsp_ch := make(chan geojson.GeoJSONFeature)
+	rsp_ch := make(chan *geojson.Feature)
 	err_ch := make(chan error)
 	done_ch := make(chan bool)
 
-	features := make([]geojson.GeoJSONFeature, 0)
+	features := make([]geojson.Feature, 0)
 	working := true
 
 	go r.PointInPolygonCandidatesWithChannels(ctx, coord, rsp_ch, err_ch, done_ch)
@@ -264,7 +264,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coo
 		}
 	}
 
-	fc := &geojson.GeoJSONFeatureCollection{
+	fc := &geojson.FeatureCollection{
 		Type:     "FeatureCollection",
 		Features: features,
 	}
@@ -272,7 +272,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coo
 	return fc, nil
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.Context, coord *geom.Coord, rsp_ch chan geojson.GeoJSONFeature, err_ch chan error, done_ch chan bool) {
+func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.Context, coord *geom.Coord, rsp_ch chan *geojson.Feature, err_ch chan error, done_ch chan bool) {
 
 	defer func() {
 		done_ch <- true
@@ -316,7 +316,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.
 			Coordinates: multi,
 		}
 
-		feature := geojson.GeoJSONFeature{
+		feature := geojson.Feature{
 			Type:       "Feature",
 			Properties: props,
 			Geometry:   geom,
@@ -429,9 +429,9 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 	wg.Wait()
 }
 
-func (db *RTreeSpatialDatabase) StandardPlacesResultsToFeatureCollection(ctx context.Context, results spr.StandardPlacesResults) (*geojson.GeoJSONFeatureCollection, error) {
+func (db *RTreeSpatialDatabase) StandardPlacesResultsToFeatureCollection(ctx context.Context, results spr.StandardPlacesResults) (*geojson.FeatureCollection, error) {
 
-	features := make([]geojson.GeoJSONFeature, 0)
+	features := make([]*geojson.Feature, 0)
 
 	for _, r := range results.Results() {
 
@@ -448,7 +448,7 @@ func (db *RTreeSpatialDatabase) StandardPlacesResultsToFeatureCollection(ctx con
 			return nil, err
 		}
 
-		f := geojson.GeoJSONFeature{
+		f := geojson.Feature{
 			Type:       "Feature",
 			Properties: fc.SPR(),
 			Geometry:   fc.Geometry(),
@@ -457,17 +457,9 @@ func (db *RTreeSpatialDatabase) StandardPlacesResultsToFeatureCollection(ctx con
 		features = append(features, f)
 	}
 
-	pg := geojson.Pagination{
-		TotalCount: len(features),
-		Page:       1,
-		PerPage:    len(features),
-		PageCount:  1,
-	}
-
-	collection := geojson.GeoJSONFeatureCollection{
+	collection := geojson.FeatureCollection{
 		Type:       "FeatureCollection",
 		Features:   features,
-		Pagination: pg,
 	}
 
 	return &collection, nil
