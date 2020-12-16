@@ -18,7 +18,7 @@ import (
 
 func main() {
 
-	database_uri := flag.String("database-uri", "rtree://", "...")
+	database_uri := flag.String("database-uri", "rtree://?strict=false", "...")
 	latitude := flag.Float64("latitude", 37.616951, "...")
 	longitude := flag.Float64("longitude", -122.383747, "...")
 
