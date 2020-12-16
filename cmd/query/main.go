@@ -6,33 +6,69 @@ import (
 	"flag"
 	"fmt"
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
+	_ "github.com/whosonfirst/go-whosonfirst-index/fs"
+	"github.com/whosonfirst/go-whosonfirst-index"	
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"log"
+	"io"
 )
 
 func main() {
 
-	database_uri := flag.String("database-uri", "", "...")
-	latitude := flag.Float64("latitude", 0.0, "...")
-	longitude := flag.Float64("longitude", 0.0, "...")
+	database_uri := flag.String("database-uri", "rtree://", "...")
+	latitude := flag.Float64("latitude", 37.616951, "...")
+	longitude := flag.Float64("longitude", -122.383747, "...")
 
+	mode := flag.String("mode", "repo://", "...")
+	
 	flag.Parse()
 
 	ctx := context.Background()
+	
 	db, err := database.NewSpatialDatabase(ctx, *database_uri)
 
 	if err != nil {
 		log.Fatalf("Failed to create database for '%s', %v", *database_uri, err)
 	}
+	
+	//
+	
+	cb := func(ctx context.Context, fh io.Reader, args ...interface{}) error {
 
+		f, err := feature.LoadFeatureFromReader(fh)
+
+		if err != nil {
+			return err
+		}
+
+		return db.IndexFeature(ctx, f)
+	}
+
+	i, err := index.NewIndexer(*mode, cb)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	paths := flag.Args()
+
+	err = i.Index(ctx, paths...)
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//
+	
 	c, err := geo.NewCoordinate(*longitude, *latitude)
 
 	if err != nil {
 		log.Fatalf("Failed to create new coordinate, %v", err)
 	}
-
+	
 	f, err := filter.NewSPRFilter()
 
 	if err != nil {
