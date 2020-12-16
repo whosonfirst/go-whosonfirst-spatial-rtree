@@ -2,17 +2,18 @@ package rtree
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/paulmach/go.geojson"
 	"github.com/skelterjohn/geom"
 	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"
 	"github.com/whosonfirst/go-whosonfirst-log"
 	"github.com/whosonfirst/go-whosonfirst-spatial/cache"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
+	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
 	"github.com/whosonfirst/go-whosonfirst-spr"
 	"net/url"
 	"strconv"
@@ -240,7 +241,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coo
 	err_ch := make(chan error)
 	done_ch := make(chan bool)
 
-	features := make([]geojson.Feature, 0)
+	features := make([]*geojson.Feature, 0)
 	working := true
 
 	go r.PointInPolygonCandidatesWithChannels(ctx, coord, rsp_ch, err_ch, done_ch)
@@ -302,21 +303,22 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.
 		nelon := swlon + b.LengthsCoord(0)
 		nelat := swlat + b.LengthsCoord(1)
 
-		sw := geojson.GeoJSONPoint{swlon, swlat}
-		nw := geojson.GeoJSONPoint{swlon, nelat}
-		ne := geojson.GeoJSONPoint{nelon, nelat}
-		se := geojson.GeoJSONPoint{nelon, swlat}
+		sw := []float64{swlon, swlat}
+		nw := []float64{swlon, nelat}
+		ne := []float64{nelon, nelat}
+		se := []float64{nelon, swlat}
 
-		ring := geojson.GeoJSONRing{sw, nw, ne, se, sw}
-		poly := geojson.GeoJSONPolygon{ring}
-		multi := geojson.GeoJSONMultiPolygon{poly}
-
-		geom := geojson.GeoJSONGeometry{
-			Type:        "MultiPolygon",
-			Coordinates: multi,
+		ring := [][]float64{
+			sw, nw, ne, se, sw,
 		}
 
-		feature := geojson.Feature{
+		poly := [][][]float64{
+			ring,
+		}
+
+		geom := geojson.NewPolygonGeometry(poly)
+
+		feature := &geojson.Feature{
 			Type:       "Feature",
 			Properties: props,
 			Geometry:   geom,
@@ -396,7 +398,12 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 				return
 			}
 
-			s := fc.SPR()
+			s, err := fc.SPR()
+
+			if err != nil {
+				r.Logger.Error("Failed to retrieve feature SPR for %s, %v", str_id, err)
+				return
+			}
 
 			for _, f := range filters {
 
@@ -408,14 +415,14 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 				}
 			}
 
-			p := fc.Polygons()
-
-			contains, err := geometry.PolygonsContainsCoord(p, *c)
+			geom, err := fc.Geometry()
 
 			if err != nil {
-				r.Logger.Error("failed to calculate intersection for %s, because %s", str_id, err)
+				r.Logger.Error("Failed to retrieve feature geometry for %s, %v", str_id, err)
 				return
 			}
+
+			contains := geo.GeoJSONGeometryContainsCoord(geom, c)
 
 			if !contains {
 				r.Logger.Debug("SKIP %s because does not contain coord (%v)", str_id, c)
@@ -448,18 +455,44 @@ func (db *RTreeSpatialDatabase) StandardPlacesResultsToFeatureCollection(ctx con
 			return nil, err
 		}
 
-		f := geojson.Feature{
+		fc_spr, err := fc.SPR()
+
+		if err != nil {
+			return nil, err
+		}
+
+		spr_enc, err := json.Marshal(fc_spr)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var spr_map map[string]interface{}
+
+		err = json.Unmarshal(spr_enc, &spr_map)
+
+		if err != nil {
+			return nil, err
+		}
+
+		geom, err := fc.Geometry()
+
+		if err != nil {
+			return nil, err
+		}
+
+		f := &geojson.Feature{
 			Type:       "Feature",
-			Properties: fc.SPR(),
-			Geometry:   fc.Geometry(),
+			Properties: spr_map,
+			Geometry:   geom,
 		}
 
 		features = append(features, f)
 	}
 
 	collection := geojson.FeatureCollection{
-		Type:       "FeatureCollection",
-		Features:   features,
+		Type:     "FeatureCollection",
+		Features: features,
 	}
 
 	return &collection, nil
