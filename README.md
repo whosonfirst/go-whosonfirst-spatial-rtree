@@ -15,6 +15,23 @@ import (
 db, err := database.NewSpatialDatabase(ctx, "rtree://")
 ```
 
+### Database URIs
+
+The `go-whosonfirst-spatial-rtree` package is instantiated using a URI in the form of:
+
+```
+rtree://?{PARAMETERS}
+```
+
+Valid parameters include:
+
+#### Parameters
+
+| Name | Value | Required| Notes |
+| --- | --- | --- |
+| strict | bool | N | |
+| index_alt_files | bool | N | |
+
 ## Tools
 
 ```
