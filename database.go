@@ -16,7 +16,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
-	"github.com/whosonfirst/go-whosonfirst-spatial/timer"	
+	"github.com/whosonfirst/go-whosonfirst-spatial/timer"
 	"github.com/whosonfirst/go-whosonfirst-spr"
 	"net/url"
 	"strconv"
@@ -38,12 +38,13 @@ type RTreeCache struct {
 
 type RTreeSpatialDatabase struct {
 	database.SpatialDatabase
-	Logger  *log.WOFLogger
-	Timer       *timer.Timer	
-	rtree   *rtreego.Rtree
-	gocache *gocache.Cache
-	mu      *sync.RWMutex
-	strict  bool
+	Logger          *log.WOFLogger
+	Timer           *timer.Timer
+	index_alt_files bool
+	rtree           *rtreego.Rtree
+	gocache         *gocache.Cache
+	mu              *sync.RWMutex
+	strict          bool
 }
 
 // cannot use &sp (type *RTreeSpatialIndex) as type rtreego.Spatial in argument to r.rtree.Insert:
@@ -113,6 +114,21 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 		cleanup = time.Duration(int_cleanup) * time.Second
 	}
 
+	index_alt_files := false
+
+	str_index_alt := q.Get("index_alt_files")
+
+	if str_index_alt != "" {
+
+		index_alt, err := strconv.ParseBool(str_index_alt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		index_alt_files = index_alt
+	}
+
 	gc := gocache.New(expires, cleanup)
 
 	logger := log.SimpleWOFLogger("index")
@@ -122,14 +138,15 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 	mu := new(sync.RWMutex)
 
 	t := timer.NewTimer()
-	
+
 	db := &RTreeSpatialDatabase{
-		Logger:  logger,
-		Timer: t,
-		rtree:   rtree,
-		gocache: gc,
-		strict:  strict,
-		mu:      mu,
+		Logger:          logger,
+		Timer:           t,
+		rtree:           rtree,
+		index_alt_files: index_alt_files,
+		gocache:         gc,
+		strict:          strict,
+		mu:              mu,
 	}
 
 	return db, nil
@@ -149,6 +166,14 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 
 	is_alt := whosonfirst.IsAlt(f)
 	alt_label := whosonfirst.AltLabel(f)
+
+	if is_alt && !r.index_alt_files {
+		return nil
+	}
+
+	if is_alt && alt_label == "" {
+		return errors.New("Invalid alt label")
+	}
 
 	wof_id := whosonfirst.Id(f)
 
@@ -231,7 +256,7 @@ func (r *RTreeSpatialDatabase) PointInPolygon(ctx context.Context, coord *geom.C
 			break
 		}
 	}
-	
+
 	spr_results := &RTreeResults{
 		Places: results,
 	}
@@ -363,15 +388,15 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 
 		go func(sp *RTreeSpatialIndex) {
 
-			sp_id := sp.Id			
-			wof_id := sp.WOFId			
+			sp_id := sp.Id
+			wof_id := sp.WOFId
 
 			t1 := time.Now()
-			
+
 			defer func() {
 				r.Timer.Add(ctx, sp_id, "time to inflate", time.Since(t1))
 			}()
-			
+
 			defer wg.Done()
 
 			select {
@@ -394,11 +419,11 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			mu.Unlock()
 
 			t2 := time.Now()
-			
+
 			cache_item, err := r.retrieveCache(ctx, sp)
 
 			r.Timer.Add(ctx, sp_id, "time to retrieve cache", time.Since(t2))
-			
+
 			if err != nil {
 				r.Logger.Error("Failed to retrieve cache for %s, %v", sp_id, err)
 				return
@@ -407,7 +432,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			s := cache_item.SPR
 
 			t3 := time.Now()
-			
+
 			for _, f := range filters {
 
 				err = filter.FilterSPR(f, s)
@@ -421,7 +446,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			r.Timer.Add(ctx, sp_id, "time to filter", time.Since(t3))
 
 			t4 := time.Now()
-			
+
 			geom := cache_item.Geometry
 
 			contains := false
@@ -436,7 +461,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			}
 
 			r.Timer.Add(ctx, sp_id, "time to test geometry", time.Since(t4))
-			
+
 			if !contains {
 				r.Logger.Debug("SKIP %s because does not contain coord (%v)", sp_id, c)
 				return

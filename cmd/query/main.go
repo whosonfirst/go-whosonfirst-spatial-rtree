@@ -25,7 +25,7 @@ func main() {
 
 	// TBD...
 	// timings := flag.Bool("timings", false, "...")
-	
+
 	mode := flag.String("mode", "repo://", "...")
 
 	flag.Parse()
@@ -95,14 +95,14 @@ func main() {
 	fmt.Println(string(enc))
 
 	/*
-	if *timings {
+		if *timings {
 
-		for label, timings := range db.Timer.Timings {
-			
-			for _, tm := range timings {
-				log.Printf("[%s] %s\n", label, tm)
+			for label, timings := range db.Timer.Timings {
+
+				for _, tm := range timings {
+					log.Printf("[%s] %s\n", label, tm)
+				}
 			}
 		}
-	}
 	*/
 }
