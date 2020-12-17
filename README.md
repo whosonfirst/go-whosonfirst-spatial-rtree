@@ -28,7 +28,7 @@ Valid parameters include:
 #### Parameters
 
 | Name | Value | Required| Notes |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | strict | bool | N | |
 | index_alt_files | bool | N | |
 
