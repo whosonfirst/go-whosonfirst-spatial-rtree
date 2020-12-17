@@ -6,10 +6,10 @@ import (
 	"errors"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
-	"github.com/paulmach/go.geojson"
 	"github.com/skelterjohn/geom"
 	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-log"
+	"github.com/whosonfirst/go-whosonfirst-spatial"
 	"github.com/whosonfirst/go-whosonfirst-spatial/cache"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
@@ -232,16 +232,16 @@ func (r *RTreeSpatialDatabase) PointInPolygonWithChannels(ctx context.Context, r
 	return
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coord *geom.Coord) (*geojson.FeatureCollection, error) {
+func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coord *geom.Coord) ([]*spatial.PointInPolygonCandidate, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	rsp_ch := make(chan *geojson.Feature)
+	rsp_ch := make(chan *spatial.PointInPolygonCandidate)
 	err_ch := make(chan error)
 	done_ch := make(chan bool)
 
-	features := make([]*geojson.Feature, 0)
+	candidates := make([]*spatial.PointInPolygonCandidate, 0)
 	working := true
 
 	go r.PointInPolygonCandidatesWithChannels(ctx, coord, rsp_ch, err_ch, done_ch)
@@ -253,7 +253,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coo
 		case <-done_ch:
 			working = false
 		case rsp := <-rsp_ch:
-			features = append(features, rsp)
+			candidates = append(candidates, rsp)
 		case err := <-err_ch:
 			return nil, err
 		default:
@@ -265,15 +265,10 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coo
 		}
 	}
 
-	fc := &geojson.FeatureCollection{
-		Type:     "FeatureCollection",
-		Features: features,
-	}
-
-	return fc, nil
+	return candidates, nil
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.Context, coord *geom.Coord, rsp_ch chan *geojson.Feature, err_ch chan error, done_ch chan bool) {
+func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.Context, coord *geom.Coord, rsp_ch chan *spatial.PointInPolygonCandidate, err_ch chan error, done_ch chan bool) {
 
 	defer func() {
 		done_ch <- true
@@ -291,40 +286,16 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.
 		sp := raw.(*RTreeSpatialIndex)
 		str_id := sp.Id
 
-		props := map[string]interface{}{
-			"id": str_id,
+		bounds := sp.Bounds()
+
+		c := &spatial.PointInPolygonCandidate{
+			Id:       sp.Id,
+			WOFId:    sp.WOFId,
+			AltLabel: sp.AltLabel,
+			Bounds:   &bounds,
 		}
 
-		b := sp.Bounds()
-
-		swlon := b.PointCoord(0)
-		swlat := b.PointCoord(1)
-
-		nelon := swlon + b.LengthsCoord(0)
-		nelat := swlat + b.LengthsCoord(1)
-
-		sw := []float64{swlon, swlat}
-		nw := []float64{swlon, nelat}
-		ne := []float64{nelon, nelat}
-		se := []float64{nelon, swlat}
-
-		ring := [][]float64{
-			sw, nw, ne, se, sw,
-		}
-
-		poly := [][][]float64{
-			ring,
-		}
-
-		geom := geojson.NewPolygonGeometry(poly)
-
-		feature := &geojson.Feature{
-			Type:       "Feature",
-			Properties: props,
-			Geometry:   geom,
-		}
-
-		rsp_ch <- feature
+		rsp_ch <- candidate
 	}
 
 	return
@@ -434,68 +405,6 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 	}
 
 	wg.Wait()
-}
-
-func (db *RTreeSpatialDatabase) StandardPlacesResultsToFeatureCollection(ctx context.Context, results spr.StandardPlacesResults) (*geojson.FeatureCollection, error) {
-
-	features := make([]*geojson.Feature, 0)
-
-	for _, r := range results.Results() {
-
-		select {
-		case <-ctx.Done():
-			return nil, nil
-		default:
-			// pass
-		}
-
-		fc, err := db.retrieveSPRCacheItem(ctx, r.Id())
-
-		if err != nil {
-			return nil, err
-		}
-
-		fc_spr, err := fc.SPR()
-
-		if err != nil {
-			return nil, err
-		}
-
-		spr_enc, err := json.Marshal(fc_spr)
-
-		if err != nil {
-			return nil, err
-		}
-
-		var spr_map map[string]interface{}
-
-		err = json.Unmarshal(spr_enc, &spr_map)
-
-		if err != nil {
-			return nil, err
-		}
-
-		geom, err := fc.Geometry()
-
-		if err != nil {
-			return nil, err
-		}
-
-		f := &geojson.Feature{
-			Type:       "Feature",
-			Properties: spr_map,
-			Geometry:   geom,
-		}
-
-		features = append(features, f)
-	}
-
-	collection := geojson.FeatureCollection{
-		Type:     "FeatureCollection",
-		Features: features,
-	}
-
-	return &collection, nil
 }
 
 func (r *RTreeSpatialDatabase) setSPRCacheItem(ctx context.Context, f wof_geojson.Feature) error {

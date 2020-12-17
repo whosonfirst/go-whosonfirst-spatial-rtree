@@ -10,6 +10,6 @@ require (
 	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.14.0
 	github.com/whosonfirst/go-whosonfirst-index v0.3.2
 	github.com/whosonfirst/go-whosonfirst-log v0.1.0
-	github.com/whosonfirst/go-whosonfirst-spatial v0.0.12
+	github.com/whosonfirst/go-whosonfirst-spatial v0.0.14
 	github.com/whosonfirst/go-whosonfirst-spr v0.1.0
 )
