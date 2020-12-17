@@ -2,19 +2,21 @@ package rtree
 
 import (
 	"context"
-	"encoding/json"
+	_ "encoding/json"
 	"errors"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/skelterjohn/geom"
 	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"		
 	"github.com/whosonfirst/go-whosonfirst-log"
 	"github.com/whosonfirst/go-whosonfirst-spatial"
-	"github.com/whosonfirst/go-whosonfirst-spatial/cache"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
 	"github.com/whosonfirst/go-whosonfirst-spr"
+	pm_geojson "github.com/paulmach/go.geojson"	
 	"net/url"
 	"strconv"
 	"sync"
@@ -24,6 +26,11 @@ import (
 func init() {
 	ctx := context.Background()
 	database.RegisterSpatialDatabase(ctx, "rtree", NewRTreeSpatialDatabase)
+}
+
+type RTreeCache struct {
+	Geometry *pm_geojson.Geometry
+	SPR spr.StandardPlacesResult
 }
 
 // PLEASE DISCUSS WHY patrickm/go-cache AND NOT whosonfirst/go-cache HERE
@@ -38,12 +45,11 @@ type RTreeSpatialDatabase struct {
 }
 
 type RTreeSpatialIndex struct {
-	bounds *rtreego.Rect
+	Bounds *rtreego.Rect
 	Id     string
-}
-
-func (sp RTreeSpatialIndex) Bounds() *rtreego.Rect {
-	return sp.bounds
+	WOFId int64
+	IsAlt bool
+	AltLabel string
 }
 
 type RTreeResults struct {
@@ -119,12 +125,22 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 }
 
 func (r *RTreeSpatialDatabase) Close(ctx context.Context) error {
-
 	return nil
 }
 
 func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.Feature) error {
 
+	err := r.setCache(ctx, f)
+
+	if err != nil {
+		return err
+	}
+
+	is_alt := whosonfirst.IsAlt(f)
+	alt_label := whosonfirst.AltLabel(f)
+
+	wof_id := whosonfirst.Id(f)
+	
 	str_id := f.Id()
 
 	bboxes, err := f.BoundingBoxes()
@@ -133,14 +149,10 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 		return err
 	}
 
-	err = r.setSPRCacheItem(ctx, f)
+	for i, bbox := range bboxes.Bounds() {
 
-	if err != nil {
-		return err
-	}
-
-	for _, bbox := range bboxes.Bounds() {
-
+		sp_id := fmt.Sprintf("%d:%s#%d", wof_id, alt_label, i)
+		
 		sw := bbox.Min
 		ne := bbox.Max
 
@@ -156,15 +168,18 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 				return err
 			}
 
-			r.Logger.Error("%s failed indexing, (%v). Strict mode is disabled, so skipping.", str_id, err)
+			r.Logger.Error("%s failed indexing, (%v). Strict mode is disabled, so skipping.", sp_id, err)
 			return nil
 		}
 
-		r.Logger.Status("index %s %v", str_id, rect)
+		r.Logger.Status("index %s %v", sp_id, rect)
 
 		sp := RTreeSpatialIndex{
-			bounds: rect,
-			Id:     str_id,
+			Bounds: rect,
+			Id:     sp_id,
+			WOFId: wof_id,
+			IsAlt: is_alt,
+			AltLabel: alt_label,
 		}
 
 		r.mu.Lock()
@@ -407,15 +422,32 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 	wg.Wait()
 }
 
-func (r *RTreeSpatialDatabase) setSPRCacheItem(ctx context.Context, f wof_geojson.Feature) error {
+func (r *RTreeSpatialDatabase) setCache(ctx context.Context, f wof_geojson.Feature) error {
 
-	fc, err := cache.NewSPRCacheItem(f)
+	s, err := f.SPR()
 
 	if err != nil {
 		return err
 	}
 
-	r.gocache.Set(f.Id(), fc, -1)
+	geom, err := geometry.GeometryForFeature(f)
+
+	if err != nil {
+		return err
+	}
+
+	alt_label := whosonfirst.AltLabel(f)
+
+	str_id := f.Id()
+
+	cache_key := fmt.Sprintf("%s:%s", str_id, alt_label)
+
+	cache_item := &RTreeCache{
+		Geometry: geom,
+		SPR: s,
+	}
+			
+	r.gocache.Set(cache_key, cache_item, -1)
 	return nil
 }
 
