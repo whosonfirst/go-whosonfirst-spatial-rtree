@@ -23,6 +23,9 @@ func main() {
 	latitude := flag.Float64("latitude", 37.616951, "...")
 	longitude := flag.Float64("longitude", -122.383747, "...")
 
+	// TBD...
+	// timings := flag.Bool("timings", false, "...")
+	
 	mode := flag.String("mode", "repo://", "...")
 
 	flag.Parse()
@@ -34,8 +37,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create database for '%s', %v", *database_uri, err)
 	}
-
-	//
 
 	cb := func(ctx context.Context, fh io.Reader, args ...interface{}) error {
 
@@ -67,8 +68,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//
-
 	c, err := geo.NewCoordinate(*longitude, *latitude)
 
 	if err != nil {
@@ -94,4 +93,16 @@ func main() {
 	}
 
 	fmt.Println(string(enc))
+
+	/*
+	if *timings {
+
+		for label, timings := range db.Timer.Timings {
+			
+			for _, tm := range timings {
+				log.Printf("[%s] %s\n", label, tm)
+			}
+		}
+	}
+	*/
 }
