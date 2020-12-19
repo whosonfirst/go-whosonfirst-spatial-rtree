@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/sfomuseum/go-flags/multi"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
@@ -116,7 +115,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	paths := flag.Args()
+	paths := fs.Args()
 
 	err = i.Index(ctx, paths...)
 
@@ -141,6 +140,10 @@ func main() {
 
 	for _, v := range pts {
 		q.Add("placetype", v)
+	}
+
+	for _, v := range is_current {
+		q.Add("is_current", v)
 	}
 
 	for _, v := range is_ceased {
