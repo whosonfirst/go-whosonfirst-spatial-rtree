@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/sfomuseum/go-flags/multi"
+	// "github.com/sfomuseum/go-flags/multi"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
 	"github.com/whosonfirst/go-whosonfirst-index"
@@ -33,8 +33,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// flags.AppendQueryFlags(fs)
+	flags.AppendQueryFlags(fs)
 
+	/*
 	latitude := fs.Float64("latitude", 0.0, "A valid latitude.")
 	longitude := fs.Float64("longitude", 0.0, "A valid longitude.")
 
@@ -63,7 +64,8 @@ func main() {
 
 	var is_superseding multi.MultiString
 	fs.Var(&is_superseding, "is-superseding", "One or more existential flags (-1, 0, 1) to filter results by.")
-
+	*/
+	
 	flags.Parse(fs)
 
 	err = flags.ValidateCommonFlags(fs)
@@ -78,13 +80,34 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// flags.ValidateQueryFlags(fs)
+	err = flags.ValidateQueryFlags(fs)
 
+	if err != nil {
+		log.Fatal(err)
+	}
+	
 	database_uri, _ := flags.StringVar(fs, "spatial-database-uri")
 	// properties_uri, _ := flags.StringVar(fs, "properties-reader-uri")
 
 	mode, _ := flags.StringVar(fs, "mode")
 
+	latitude, _ := flags.Float64Var(fs, "latitude")
+	longitude, _ := flags.Float64Var(fs, "latitude")	
+
+	geometries, _ := flags.StringVar(fs, "geometries")
+
+	alt_geoms, _ := flags.MultiStringVar(fs, "alternate-geometry")
+	is_current, _ := flags.MultiStringVar(fs, "is-current")
+	is_ceased, _ := flags.MultiStringVar(fs, "is-ceased")
+	is_deprecated, _ := flags.MultiStringVar(fs, "is-deprecated")
+	is_superseded, _ := flags.MultiStringVar(fs, "is-superseded")
+	is_superseding, _ := flags.MultiStringVar(fs, "is-superseding")	
+
+	pts, _ := flags.MultiStringVar(fs, "placetype")
+
+	log.Println("PLACEPTYE", pts)
+	return
+	
 	ctx := context.Background()
 
 	db, err := database.NewSpatialDatabase(ctx, database_uri)
@@ -123,7 +146,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c, err := geo.NewCoordinate(*longitude, *latitude)
+	c, err := geo.NewCoordinate(longitude, latitude)
 
 	if err != nil {
 		log.Fatalf("Failed to create new coordinate, %v", err)
@@ -132,7 +155,7 @@ func main() {
 	// START OF put me in a WithFlagSet(fs) function
 
 	q := url.Values{}
-	q.Set("geometries", *geometries)
+	q.Set("geometries", geometries)
 
 	for _, v := range alt_geoms {
 		q.Add("alternate_geometry", v)
