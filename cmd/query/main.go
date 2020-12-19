@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/sfomuseum/go-flags/multi"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
 	"github.com/whosonfirst/go-whosonfirst-index"
@@ -12,30 +13,85 @@ import (
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
+	"github.com/whosonfirst/go-whosonfirst-spatial/flags"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
 	"io"
 	"log"
+	"net/url"
 )
 
 func main() {
 
-	database_uri := flag.String("database-uri", "rtree://?strict=false", "...")
-	latitude := flag.Float64("latitude", 37.616951, "...")
-	longitude := flag.Float64("longitude", -122.383747, "...")
+	fs, err := flags.CommonFlags()
 
-	// TBD...
-	// timings := flag.Bool("timings", false, "...")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	mode := flag.String("mode", "repo://", "...")
+	err = flags.AppendIndexingFlags(fs)
 
-	flag.Parse()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// flags.AppendQueryFlags(fs)
+
+	latitude := fs.Float64("latitude", 0.0, "A valid latitude.")
+	longitude := fs.Float64("longitude", 0.0, "A valid longitude.")
+
+	geometries := fs.String("geometries", "all", "Valid options are: all, alt, default.")
+
+	var props multi.MultiString
+	fs.Var(&props, "properties", "One or more Who's On First properties to append to each result.")
+
+	var pts multi.MultiString
+	fs.Var(&pts, "placetype", "One or more place types to filter results by.")
+
+	var alt_geoms multi.MultiString
+	fs.Var(&alt_geoms, "alternate-geometry", "One or more alternate geometry labels (wof:alt_label) values to filter results by.")
+
+	var is_current multi.MultiString
+	fs.Var(&is_current, "is-current", "One or more existential flags (-1, 0, 1) to filter results by.")
+
+	var is_ceased multi.MultiString
+	fs.Var(&is_ceased, "is-ceased", "One or more existential flags (-1, 0, 1) to filter results by.")
+
+	var is_deprecated multi.MultiString
+	fs.Var(&is_deprecated, "is-deprecated", "One or more existential flags (-1, 0, 1) to filter results by.")
+
+	var is_superseded multi.MultiString
+	fs.Var(&is_superseded, "is-superseded", "One or more existential flags (-1, 0, 1) to filter results by.")
+
+	var is_superseding multi.MultiString
+	fs.Var(&is_superseding, "is-superseding", "One or more existential flags (-1, 0, 1) to filter results by.")
+
+	flags.Parse(fs)
+
+	err = flags.ValidateCommonFlags(fs)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = flags.ValidateIndexingFlags(fs)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// flags.ValidateQueryFlags(fs)
+
+	database_uri, _ := flags.StringVar(fs, "spatial-database-uri")
+	// properties_uri, _ := flags.StringVar(fs, "properties-reader-uri")
+
+	mode, _ := flags.StringVar(fs, "mode")
 
 	ctx := context.Background()
 
-	db, err := database.NewSpatialDatabase(ctx, *database_uri)
+	db, err := database.NewSpatialDatabase(ctx, database_uri)
 
 	if err != nil {
-		log.Fatalf("Failed to create database for '%s', %v", *database_uri, err)
+		log.Fatalf("Failed to create database for '%s', %v", database_uri, err)
 	}
 
 	cb := func(ctx context.Context, fh io.Reader, args ...interface{}) error {
@@ -54,7 +110,7 @@ func main() {
 		}
 	}
 
-	i, err := index.NewIndexer(*mode, cb)
+	i, err := index.NewIndexer(mode, cb)
 
 	if err != nil {
 		log.Fatal(err)
@@ -74,11 +130,42 @@ func main() {
 		log.Fatalf("Failed to create new coordinate, %v", err)
 	}
 
-	f, err := filter.NewSPRFilter()
+	// START OF put me in a WithFlagSet(fs) function
+
+	q := url.Values{}
+	q.Set("geometries", *geometries)
+
+	for _, v := range alt_geoms {
+		q.Add("alternate_geometry", v)
+	}
+
+	for _, v := range pts {
+		q.Add("placetype", v)
+	}
+
+	for _, v := range is_ceased {
+		q.Add("is_ceased", v)
+	}
+
+	for _, v := range is_deprecated {
+		q.Add("is_deprecated", v)
+	}
+
+	for _, v := range is_superseded {
+		q.Add("is_superseded", v)
+	}
+
+	for _, v := range is_superseding {
+		q.Add("is_superseding", v)
+	}
+
+	f, err := filter.NewSPRFilterFromQuery(q)
 
 	if err != nil {
 		log.Fatalf("Failed to create SPR filter, %v", err)
 	}
+
+	// END OF put me in a WithFlagSet(fs) function
 
 	r, err := db.PointInPolygon(ctx, c, f)
 
