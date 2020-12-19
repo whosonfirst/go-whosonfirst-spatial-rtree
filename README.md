@@ -42,15 +42,50 @@ $> make cli
 
 ```
 $> ./bin/query -h
-Usage of ./bin/query:
-  -database-uri string
-    	... (default "rtree://?strict=false")
+  -alternate-geometry value
+    	One or more alternate geometry labels (wof:alt_label) values to filter results by.
+  -custom-placetypes string
+    	...
+  -custom-placetypes-source string
+    	...
+  -enable-custom-placetypes
+    	...
+  -enable-properties
+    	Enable support for 'properties' parameters in queries.
+  -exclude value
+    	Exclude (WOF) records based on their existential flags. Valid options are: ceased, deprecated, not-current, superseded.
+  -geometries string
+    	Valid options are: all, alt, default. (default "all")
+  -is-ceased value
+    	One or more existential flags (-1, 0, 1) to filter results by.
+  -is-current value
+    	One or more existential flags (-1, 0, 1) to filter results by.
+  -is-deprecated value
+    	One or more existential flags (-1, 0, 1) to filter results by.
+  -is-superseded value
+    	One or more existential flags (-1, 0, 1) to filter results by.
+  -is-superseding value
+    	One or more existential flags (-1, 0, 1) to filter results by.
+  -is-wof
+    	Input data is WOF-flavoured GeoJSON. (Pass a value of '0' or 'false' if you need to index non-WOF documents. (default true)
   -latitude float
-    	... (default 37.616951)
+    	A valid latitude.
   -longitude float
-    	... (default -122.383747)
+    	A valid longitude.
   -mode string
-    	... (default "repo://")
+    	Valid modes are: directory, featurecollection, file, filelist, geojsonl, repo. (default "repo://")
+  -placetype value
+    	One or more place types to filter results by.
+  -properties value
+    	One or more Who's On First properties to append to each result.
+  -properties-reader-uri string
+    	Valid options are: []
+  -setenv
+    	Set flags from environment variables.
+  -spatial-database-uri string
+    	Valid options are: [rtree://] (default "rtree://")
+  -verbose
+    	Be chatty.
 ```
 
 For example:
