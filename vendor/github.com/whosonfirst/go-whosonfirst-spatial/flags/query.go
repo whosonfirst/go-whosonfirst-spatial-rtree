@@ -1,8 +1,10 @@
 package flags
 
 import (
+	"errors"
 	"flag"
 	"github.com/sfomuseum/go-flags/multi"
+	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
 )
 
 func AppendQueryFlags(fs *flag.FlagSet) error {
@@ -41,18 +43,26 @@ func AppendQueryFlags(fs *flag.FlagSet) error {
 
 func ValidateQueryFlags(fs *flag.FlagSet) error {
 
-	_, err := Float64Var(fs, "latitude")
+	lat, err := Float64Var(fs, "latitude")
 
 	if err != nil {
 		return err
 	}
 	
-	_, err = Float64Var(fs, "longitude")	
+	lon, err := Float64Var(fs, "longitude")	
 
 	if err != nil {
 		return err
 	}
 
+	if !geo.IsValidLatitude(lat){
+		return errors.New("Invalid latitude")
+	}
+
+	if !geo.IsValidLongitude(lon){
+		return errors.New("Invalid longitude")
+	}
+	
 	_, err = StringVar(fs, "geometries")
 
 	if err != nil {
@@ -64,6 +74,37 @@ func ValidateQueryFlags(fs *flag.FlagSet) error {
 	if err != nil {
 		return err
 	}
+
+	_, err = MultiStringVar(fs, "is-current")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = MultiStringVar(fs, "is-ceased")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = MultiStringVar(fs, "is-deprecated")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = MultiStringVar(fs, "is-superseding")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = MultiStringVar(fs, "is-superseded")
+
+	if err != nil {
+		return err
+	}
+	
 	
 	return nil
 }
