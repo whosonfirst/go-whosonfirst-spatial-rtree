@@ -30,8 +30,8 @@ func init() {
 }
 
 type RTreeCache struct {
-	Geometry *pm_geojson.Geometry
-	SPR      spr.StandardPlacesResult
+	Geometry *pm_geojson.Geometry     `json:"geometry"`
+	SPR      spr.StandardPlacesResult `json:"properties"`
 }
 
 // PLEASE DISCUSS WHY patrickm/go-cache AND NOT whosonfirst/go-cache HERE
@@ -47,14 +47,12 @@ type RTreeSpatialDatabase struct {
 	strict          bool
 }
 
-// cannot use &sp (type *RTreeSpatialIndex) as type rtreego.Spatial in argument to r.rtree.Insert:
-
 type RTreeSpatialIndex struct {
-	Rect     *rtreego.Rect
-	Id       string
-	WOFId    int64
-	IsAlt    bool
-	AltLabel string
+	Rect      *rtreego.Rect
+	Id        string
+	FeatureId string
+	IsAlt     bool
+	AltLabel  string
 }
 
 func (i *RTreeSpatialIndex) Bounds() *rtreego.Rect {
@@ -175,7 +173,7 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 		return errors.New("Invalid alt label")
 	}
 
-	wof_id := whosonfirst.Id(f)
+	feature_id := f.Id()
 
 	bboxes, err := f.BoundingBoxes()
 
@@ -185,7 +183,11 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 
 	for i, bbox := range bboxes.Bounds() {
 
-		sp_id := fmt.Sprintf("%d:%s#%d", wof_id, alt_label, i)
+		sp_id, err := spatial.SpatialIdWithFeature(f, i)
+
+		if err != nil {
+			return err
+		}
 
 		sw := bbox.Min
 		ne := bbox.Max
@@ -209,11 +211,11 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 		r.Logger.Status("index %s %v", sp_id, rect)
 
 		sp := RTreeSpatialIndex{
-			Rect:     rect,
-			Id:       sp_id,
-			WOFId:    wof_id,
-			IsAlt:    is_alt,
-			AltLabel: alt_label,
+			Rect:      rect,
+			Id:        sp_id,
+			FeatureId: feature_id,
+			IsAlt:     is_alt,
+			AltLabel:  alt_label,
 		}
 
 		r.mu.Lock()
@@ -337,9 +339,9 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.
 		// bounds := sp.Bounds()
 
 		c := &spatial.PointInPolygonCandidate{
-			Id:       sp.Id,
-			WOFId:    sp.WOFId,
-			AltLabel: sp.AltLabel,
+			Id:        sp.Id,
+			FeatureId: sp.FeatureId,
+			AltLabel:  sp.AltLabel,
 			// FIX ME
 			// Bounds:   bounds,
 		}
@@ -376,7 +378,7 @@ func (r *RTreeSpatialDatabase) getIntersectsByRect(rect *rtreego.Rect) ([]rtreeg
 
 func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, rsp_ch chan spr.StandardPlacesResult, err_ch chan error, possible []rtreego.Spatial, c *geom.Coord, filters ...filter.Filter) {
 
-	seen := make(map[int64]bool)
+	seen := make(map[string]bool)
 
 	mu := new(sync.RWMutex)
 	wg := new(sync.WaitGroup)
@@ -389,7 +391,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 		go func(sp *RTreeSpatialIndex) {
 
 			sp_id := sp.Id
-			wof_id := sp.WOFId
+			feature_id := sp.FeatureId
 
 			t1 := time.Now()
 
@@ -407,7 +409,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			}
 
 			mu.RLock()
-			_, ok := seen[wof_id]
+			_, ok := seen[feature_id]
 			mu.RUnlock()
 
 			if ok {
@@ -415,7 +417,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			}
 
 			mu.Lock()
-			seen[wof_id] = true
+			seen[feature_id] = true
 			mu.Unlock()
 
 			t2 := time.Now()
@@ -490,9 +492,9 @@ func (r *RTreeSpatialDatabase) setCache(ctx context.Context, f wof_geojson.Featu
 
 	alt_label := whosonfirst.AltLabel(f)
 
-	wof_id := whosonfirst.Id(f)
+	feature_id := f.Id()
 
-	cache_key := fmt.Sprintf("%d:%s", wof_id, alt_label)
+	cache_key := fmt.Sprintf("%s:%s", feature_id, alt_label)
 
 	cache_item := &RTreeCache{
 		Geometry: geom,
@@ -505,7 +507,7 @@ func (r *RTreeSpatialDatabase) setCache(ctx context.Context, f wof_geojson.Featu
 
 func (r *RTreeSpatialDatabase) retrieveCache(ctx context.Context, sp *RTreeSpatialIndex) (*RTreeCache, error) {
 
-	cache_key := fmt.Sprintf("%d:%s", sp.WOFId, sp.AltLabel)
+	cache_key := fmt.Sprintf("%s:%s", sp.FeatureId, sp.AltLabel)
 
 	cache_item, ok := r.gocache.Get(cache_key)
 
