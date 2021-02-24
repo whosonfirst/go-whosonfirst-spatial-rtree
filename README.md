@@ -96,7 +96,7 @@ $> ./bin/query -h
     	Be chatty.
 ```
 
-For example:
+#### Example
 
 ```
 $> ./bin/query \
