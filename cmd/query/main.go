@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
-	"github.com/whosonfirst/go-whosonfirst-index"
-	_ "github.com/whosonfirst/go-whosonfirst-index/fs"
+	"github.com/whosonfirst/go-whosonfirst-iterate/iterator"
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/flags"
@@ -59,7 +58,7 @@ func main() {
 	database_uri, _ := flags.StringVar(fs, "spatial-database-uri")
 	// properties_uri, _ := flags.StringVar(fs, "properties-reader-uri")
 
-	mode, _ := flags.StringVar(fs, "mode")
+	iterator_uri, _ := flags.StringVar(fs, "iterator-uri")
 
 	latitude, _ := flags.Float64Var(fs, "latitude")
 	longitude, _ := flags.Float64Var(fs, "longitude")
@@ -72,7 +71,7 @@ func main() {
 		log.Fatalf("Failed to create database for '%s', %v", database_uri, err)
 	}
 
-	cb := func(ctx context.Context, fh io.Reader, args ...interface{}) error {
+	iter_cb := func(ctx context.Context, fh io.ReadSeeker, args ...interface{}) error {
 
 		f, err := feature.LoadFeatureFromReader(fh)
 
@@ -88,7 +87,7 @@ func main() {
 		}
 	}
 
-	i, err := index.NewIndexer(mode, cb)
+	iter, err := iterator.NewIterator(ctx, iterator_uri, iter_cb)
 
 	if err != nil {
 		log.Fatal(err)
@@ -96,7 +95,7 @@ func main() {
 
 	paths := fs.Args()
 
-	err = i.Index(ctx, paths...)
+	err = iter.IterateURIs(ctx, paths...)
 
 	if err != nil {
 		log.Fatal(err)
@@ -129,16 +128,4 @@ func main() {
 	}
 
 	fmt.Println(string(enc))
-
-	/*
-		if *timings {
-
-			for label, timings := range db.Timer.Timings {
-
-				for _, tm := range timings {
-					log.Printf("[%s] %s\n", label, tm)
-				}
-			}
-		}
-	*/
 }
