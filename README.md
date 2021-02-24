@@ -4,7 +4,7 @@ In-memory implementation of the go-whosonfirst-spatial interfaces.
 
 ## Important
 
-This is work in progress. Document remains incomplete.
+This is work in progress. Documentation remains incomplete.
 
 ## Interfaces
 
