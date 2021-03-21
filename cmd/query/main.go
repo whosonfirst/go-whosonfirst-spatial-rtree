@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sfomuseum/go-flags/flagset"
+	"github.com/sfomuseum/go-flags/lookup"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
 	"github.com/whosonfirst/go-whosonfirst-iterate/iterator"
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
+	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 	"github.com/whosonfirst/go-whosonfirst-spatial/flags"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
 	"io"
@@ -35,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	flags.Parse(fs)
+	flagset.Parse(fs)
 
 	err = flags.ValidateCommonFlags(fs)
 
@@ -55,13 +58,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	database_uri, _ := flags.StringVar(fs, "spatial-database-uri")
-	// properties_uri, _ := flags.StringVar(fs, "properties-reader-uri")
+	database_uri, _ := lookup.StringVar(fs, "spatial-database-uri")
+	// properties_uri, _ := lookup.StringVar(fs, "properties-reader-uri")
 
-	iterator_uri, _ := flags.StringVar(fs, "iterator-uri")
+	iterator_uri, _ := lookup.StringVar(fs, "iterator-uri")
 
-	latitude, _ := flags.Float64Var(fs, "latitude")
-	longitude, _ := flags.Float64Var(fs, "longitude")
+	latitude, _ := lookup.Float64Var(fs, "latitude")
+	longitude, _ := lookup.Float64Var(fs, "longitude")
 
 	ctx := context.Background()
 
@@ -107,7 +110,7 @@ func main() {
 		log.Fatalf("Failed to create new coordinate, %v", err)
 	}
 
-	f, err := flags.NewSPRFilterFromFlagSet(fs)
+	f, err := filter.NewSPRFilterFromFlagSet(fs)
 
 	if err != nil {
 		log.Fatalf("Failed to create SPR filter, %v", err)
