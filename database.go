@@ -1,13 +1,16 @@
 package rtree
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
 	pm_geojson "github.com/paulmach/go.geojson"
 	"github.com/skelterjohn/geom"
+	"github.com/whosonfirst/go-ioutil"
 	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"
 	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
@@ -18,6 +21,8 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
 	"github.com/whosonfirst/go-whosonfirst-spatial/timer"
 	"github.com/whosonfirst/go-whosonfirst-spr/v2"
+	"github.com/whosonfirst/go-whosonfirst-uri"
+	"io"
 	"net/url"
 	"strconv"
 	"sync"
@@ -516,4 +521,79 @@ func (r *RTreeSpatialDatabase) retrieveCache(ctx context.Context, sp *RTreeSpati
 	}
 
 	return cache_item.(*RTreeCache), nil
+}
+
+// whosonfirst/go-reader interface
+
+func (r *RTreeSpatialDatabase) Read(ctx context.Context, str_uri string) (io.ReadSeekCloser, error) {
+
+	id, _, err := uri.ParseURI(str_uri)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// TO DO : ALT STUFF HERE
+
+	str_id := strconv.FormatInt(id, 10)
+
+	sp := &RTreeSpatialIndex{
+		FeatureId: str_id,
+		AltLabel:  "",
+	}
+
+	cache_item, err := r.retrieveCache(ctx, sp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// START OF this is dumb
+
+	enc_spr, err := json.Marshal(cache_item.SPR)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var props map[string]interface{}
+
+	err = json.Unmarshal(enc_spr, &props)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// END OF this is dumb
+
+	f := pm_geojson.NewFeature(cache_item.Geometry)
+
+	if err != nil {
+		return nil, err
+	}
+
+	f.Properties = props
+
+	enc_f, err := f.MarshalJSON()
+
+	if err != nil {
+		return nil, err
+	}
+
+	br := bytes.NewReader(enc_f)
+	return ioutil.NewReadSeekCloser(br)
+}
+
+func (r *RTreeSpatialDatabase) ReaderURI(ctx context.Context, str_uri string) string {
+	return str_uri
+}
+
+// whosonfirst/go-writer interface
+
+func (r *RTreeSpatialDatabase) Write(ctx context.Context, key string, fh io.ReadSeeker) (int64, error) {
+	return 0, fmt.Errorf("Not implemented")
+}
+
+func (r *RTreeSpatialDatabase) WriterURI(ctx context.Context, str_uri string) string {
+	return str_uri
 }
