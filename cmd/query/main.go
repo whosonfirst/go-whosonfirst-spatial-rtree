@@ -59,8 +59,6 @@ func main() {
 	}
 
 	database_uri, _ := lookup.StringVar(fs, "spatial-database-uri")
-	// properties_uri, _ := lookup.StringVar(fs, "properties-reader-uri")
-
 	iterator_uri, _ := lookup.StringVar(fs, "iterator-uri")
 
 	latitude, _ := lookup.Float64Var(fs, "latitude")
