@@ -81,11 +81,11 @@ $> ./bin/query -h
   -placetype value
     	One or more place types to filter results by.
   -properties-reader-uri string
-    	Valid options are: [rtree://]
+    	A valid whosonfirst/go-reader.Reader URI. Available options are: [file:// fs:// null://]
   -property value
     	One or more Who's On First properties to append to each result.
   -spatial-database-uri string
-    	Valid options are: [rtree://]
+    	A valid whosonfirst/go-whosonfirst-spatial/data.SpatialDatabase URI. options are: [rtree://]
   -verbose
     	Be chatty.
 ```

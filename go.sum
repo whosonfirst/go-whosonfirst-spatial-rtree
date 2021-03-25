@@ -170,6 +170,8 @@ github.com/whosonfirst/go-whosonfirst-spatial v0.0.50 h1:bINDPg2RqimW2YY3vjyRjW3
 github.com/whosonfirst/go-whosonfirst-spatial v0.0.50/go.mod h1:n838yr+AOlrgpUG6qldO50ehiFzHJi/7fcFnf2aFq2o=
 github.com/whosonfirst/go-whosonfirst-spatial v0.0.53 h1:x+pzkZA4hzTrQVoCfT7jagKYxTM9qykpZwJ9uGnepvc=
 github.com/whosonfirst/go-whosonfirst-spatial v0.0.53/go.mod h1:EapRzFWjj2w/vuPoqnQw2rlznIK0I/0t+9uIlf+Ordo=
+github.com/whosonfirst/go-whosonfirst-spatial v0.0.55 h1:KzPIlnEOwnA0lPL0icZ2XO2g90zGhpOmRCtwCKK3VW4=
+github.com/whosonfirst/go-whosonfirst-spatial v0.0.55/go.mod h1:EapRzFWjj2w/vuPoqnQw2rlznIK0I/0t+9uIlf+Ordo=
 github.com/whosonfirst/go-whosonfirst-spr v0.1.0 h1:5qE629nCiucF2upy5NjPOEl9cFatsljykYY0l2JKgAk=
 github.com/whosonfirst/go-whosonfirst-spr v0.1.0/go.mod h1:R8GtEVz1GVSnwwOjzcoVUd172ZK26Q7hQSLI6SGG7lM=
 github.com/whosonfirst/go-whosonfirst-spr/v2 v2.0.0 h1:UQ1n/uODS50mckZpXYe5GKm8XwoUUC1jRcNN8oiW2uc=
