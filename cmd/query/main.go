@@ -6,15 +6,11 @@ import (
 	"fmt"
 	"github.com/sfomuseum/go-flags/flagset"
 	"github.com/sfomuseum/go-flags/lookup"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/geometry"
-	"github.com/whosonfirst/go-whosonfirst-iterate/iterator"
 	_ "github.com/whosonfirst/go-whosonfirst-spatial-rtree"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
 	"github.com/whosonfirst/go-whosonfirst-spatial/flags"
 	"github.com/whosonfirst/go-whosonfirst-spatial/geo"
-	"io"
 	"log"
 )
 
@@ -64,6 +60,8 @@ func main() {
 	latitude, _ := lookup.Float64Var(fs, "latitude")
 	longitude, _ := lookup.Float64Var(fs, "longitude")
 
+	iterator_sources := fs.Args()
+
 	ctx := context.Background()
 
 	db, err := database.NewSpatialDatabase(ctx, database_uri)
@@ -72,34 +70,10 @@ func main() {
 		log.Fatalf("Failed to create database for '%s', %v", database_uri, err)
 	}
 
-	iter_cb := func(ctx context.Context, fh io.ReadSeeker, args ...interface{}) error {
-
-		f, err := feature.LoadFeatureFromReader(fh)
-
-		if err != nil {
-			return err
-		}
-
-		switch geometry.Type(f) {
-		case "Polygon", "MultiPolygon":
-			return db.IndexFeature(ctx, f)
-		default:
-			return nil
-		}
-	}
-
-	iter, err := iterator.NewIterator(ctx, iterator_uri, iter_cb)
+	err = database.IndexDatabaseWithIterator(ctx, db, iterator_uri, iterator_sources...)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	paths := fs.Args()
-
-	err = iter.IterateURIs(ctx, paths...)
-
-	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to index database with iterator, %v", err)
 	}
 
 	c, err := geo.NewCoordinate(longitude, latitude)

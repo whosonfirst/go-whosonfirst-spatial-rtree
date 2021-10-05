@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
 	pm_geojson "github.com/paulmach/go.geojson"
 	"github.com/skelterjohn/geom"
 	"github.com/whosonfirst/go-ioutil"
-	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst"
-	"github.com/whosonfirst/go-whosonfirst-log"
+	"github.com/whosonfirst/go-whosonfirst-feature/properties"
+	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"            // deprecated
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"                // deprecated
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"               // deprecated
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst" // deprecated
 	"github.com/whosonfirst/go-whosonfirst-spatial"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
@@ -23,6 +23,7 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-spr/v2"
 	"github.com/whosonfirst/go-whosonfirst-uri"
 	"io"
+	"log"
 	"net/url"
 	"strconv"
 	"sync"
@@ -43,7 +44,7 @@ type RTreeCache struct {
 
 type RTreeSpatialDatabase struct {
 	database.SpatialDatabase
-	Logger          *log.WOFLogger
+	Logger          *log.Logger
 	Timer           *timer.Timer
 	index_alt_files bool
 	rtree           *rtreego.Rtree
@@ -134,7 +135,7 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 
 	gc := gocache.New(expires, cleanup)
 
-	logger := log.SimpleWOFLogger("index")
+	logger := log.Default()
 
 	rtree := rtreego.NewTree(2, 25, 50)
 
@@ -159,23 +160,29 @@ func (r *RTreeSpatialDatabase) Close(ctx context.Context) error {
 	return nil
 }
 
-func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.Feature) error {
+func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) error {
 
-	err := r.setCache(ctx, f)
+	f, err := feature.LoadFeature(body)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to load feature, %w", err)
+	}
+
+	err = r.setCache(ctx, f)
+
+	if err != nil {
+		return fmt.Errorf("Failed to cache feature, %w", err)
 	}
 
 	is_alt := whosonfirst.IsAlt(f)
-	alt_label := whosonfirst.AltLabel(f)
+	alt_label, _ := properties.AltLabel(body)
 
 	if is_alt && !r.index_alt_files {
 		return nil
 	}
 
 	if is_alt && alt_label == "" {
-		return errors.New("Invalid alt label")
+		return fmt.Errorf("Invalid alt label")
 	}
 
 	feature_id := f.Id()
@@ -188,10 +195,10 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 
 	for i, bbox := range bboxes.Bounds() {
 
-		sp_id, err := spatial.SpatialIdWithFeature(f, i)
+		sp_id, err := spatial.SpatialIdWithFeature(body, i)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to derive spatial ID, %v", err)
 		}
 
 		sw := bbox.Min
@@ -206,14 +213,14 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 		if err != nil {
 
 			if r.strict {
-				return err
+				return fmt.Errorf("Failed to derive rtree bounds, %w", err)
 			}
 
-			r.Logger.Error("%s failed indexing, (%v). Strict mode is disabled, so skipping.", sp_id, err)
+			r.Logger.Printf("%s failed indexing, (%v). Strict mode is disabled, so skipping.", sp_id, err)
 			return nil
 		}
 
-		r.Logger.Status("index %s %v", sp_id, rect)
+		r.Logger.Printf("index %s %v", sp_id, rect)
 
 		sp := RTreeSpatialIndex{
 			Rect:      rect,
@@ -229,6 +236,10 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, f wof_geojson.F
 	}
 
 	return nil
+}
+
+func (r *RTreeSpatialDatabase) RemoveFeature(ctx context.Context, id int64) error {
+	return fmt.Errorf("Not implemented.")
 }
 
 func (r *RTreeSpatialDatabase) PointInPolygon(ctx context.Context, coord *geom.Coord, filters ...spatial.Filter) (spr.StandardPlacesResults, error) {
@@ -366,7 +377,7 @@ func (r *RTreeSpatialDatabase) getIntersectsByCoord(coord *geom.Coord) ([]rtreeg
 	rect, err := rtreego.NewRect(pt, []float64{0.0001, 0.0001}) // how small can I make this?
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to derive rtree bounds, %w", err)
 	}
 
 	return r.getIntersectsByRect(rect)
@@ -432,7 +443,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			r.Timer.Add(ctx, sp_id, "time to retrieve cache", time.Since(t2))
 
 			if err != nil {
-				r.Logger.Error("Failed to retrieve cache for %s, %v", sp_id, err)
+				r.Logger.Printf("Failed to retrieve cache for %s, %v", sp_id, err)
 				return
 			}
 
@@ -445,7 +456,7 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 				err = filter.FilterSPR(f, s)
 
 				if err != nil {
-					r.Logger.Debug("SKIP %s because filter error %s", sp_id, err)
+					// r.Logger.Debug("SKIP %s because filter error %s", sp_id, err)
 					return
 				}
 			}
@@ -464,13 +475,13 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 			case "MultiPolygon":
 				contains = geo.MultiPolygonContainsCoord(geom.MultiPolygon, c)
 			default:
-				r.Logger.Warning("Geometry has unsupported geometry type '%s'", geom.Type)
+				r.Logger.Printf("Geometry has unsupported geometry type '%s'", geom.Type)
 			}
 
 			r.Timer.Add(ctx, sp_id, "time to test geometry", time.Since(t4))
 
 			if !contains {
-				r.Logger.Debug("SKIP %s because does not contain coord (%v)", sp_id, c)
+				// r.Logger.Debug("SKIP %s because does not contain coord (%v)", sp_id, c)
 				return
 			}
 
@@ -492,7 +503,7 @@ func (r *RTreeSpatialDatabase) setCache(ctx context.Context, f wof_geojson.Featu
 	geom, err := geometry.GeometryForFeature(f)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to derive geometry for feature, %w", err)
 	}
 
 	alt_label := whosonfirst.AltLabel(f)
@@ -517,7 +528,7 @@ func (r *RTreeSpatialDatabase) retrieveCache(ctx context.Context, sp *RTreeSpati
 	cache_item, ok := r.gocache.Get(cache_key)
 
 	if !ok {
-		return nil, errors.New("Invalid cache ID")
+		return nil, fmt.Errorf("Invalid cache ID '%s'", cache_key)
 	}
 
 	return cache_item.(*RTreeCache), nil
@@ -530,7 +541,7 @@ func (r *RTreeSpatialDatabase) Read(ctx context.Context, str_uri string) (io.Rea
 	id, _, err := uri.ParseURI(str_uri)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to parse URI %s, %w", str_uri, err)
 	}
 
 	// TO DO : ALT STUFF HERE
@@ -545,7 +556,7 @@ func (r *RTreeSpatialDatabase) Read(ctx context.Context, str_uri string) (io.Rea
 	cache_item, err := r.retrieveCache(ctx, sp)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to retrieve cache, %w", err)
 	}
 
 	// START OF this is dumb
@@ -553,7 +564,7 @@ func (r *RTreeSpatialDatabase) Read(ctx context.Context, str_uri string) (io.Rea
 	enc_spr, err := json.Marshal(cache_item.SPR)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to marchal cache record, %w", err)
 	}
 
 	var props map[string]interface{}
