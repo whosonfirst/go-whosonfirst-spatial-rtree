@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"github.com/dhconnelly/rtreego"
 	gocache "github.com/patrickmn/go-cache"
-	pm_geojson "github.com/paulmach/go.geojson"
+	"github.com/paulmach/orb/geojson"
 	"github.com/skelterjohn/geom"
 	"github.com/whosonfirst/go-ioutil"
+	"github.com/whosonfirst/go-whosonfirst-feature/alt"
+	"github.com/whosonfirst/go-whosonfirst-feature/geometry"
 	"github.com/whosonfirst/go-whosonfirst-feature/properties"
-	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2"            // deprecated
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"                // deprecated
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/geometry"               // deprecated
-	"github.com/whosonfirst/go-whosonfirst-geojson-v2/properties/whosonfirst" // deprecated
+	wof_geojson "github.com/whosonfirst/go-whosonfirst-geojson-v2" // deprecated
+	"github.com/whosonfirst/go-whosonfirst-geojson-v2/feature"     // deprecated
 	"github.com/whosonfirst/go-whosonfirst-spatial"
 	"github.com/whosonfirst/go-whosonfirst-spatial/database"
 	"github.com/whosonfirst/go-whosonfirst-spatial/filter"
@@ -36,7 +36,7 @@ func init() {
 }
 
 type RTreeCache struct {
-	Geometry *pm_geojson.Geometry     `json:"geometry"`
+	Geometry *geojson.Geometry        `json:"geometry"`
 	SPR      spr.StandardPlacesResult `json:"properties"`
 }
 
@@ -174,7 +174,7 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 		return fmt.Errorf("Failed to cache feature, %w", err)
 	}
 
-	is_alt := whosonfirst.IsAlt(f)
+	is_alt := alt.IsAlt(body)
 	alt_label, _ := properties.AltLabel(body)
 
 	if is_alt && !r.index_alt_files {
@@ -467,9 +467,14 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 
 			geom := cache_item.Geometry
 
+			orb_geom := geom.Geometry()
+			geom_type := orb_geom.GeoJSONType()
+
 			contains := false
 
-			switch geom.Type {
+			// I AM HERE - these methods in go-whosonfirst-spatial/geo need to be updated
+			
+			switch geom_type {
 			case "Polygon":
 				contains = geo.PolygonContainsCoord(geom.Polygon, c)
 			case "MultiPolygon":
@@ -500,13 +505,13 @@ func (r *RTreeSpatialDatabase) setCache(ctx context.Context, f wof_geojson.Featu
 		return err
 	}
 
-	geom, err := geometry.GeometryForFeature(f)
+	geom, err := geometry.Geometry(f.Bytes())
 
 	if err != nil {
 		return fmt.Errorf("Failed to derive geometry for feature, %w", err)
 	}
 
-	alt_label := whosonfirst.AltLabel(f)
+	alt_label, _ := properties.AltLabel(f.Bytes())
 
 	feature_id := f.Id()
 
@@ -577,7 +582,8 @@ func (r *RTreeSpatialDatabase) Read(ctx context.Context, str_uri string) (io.Rea
 
 	// END OF this is dumb
 
-	f := pm_geojson.NewFeature(cache_item.Geometry)
+	orb_geom := cache_item.Geometry.Geometry()
+	f := geojson.NewFeature(orb_geom)
 
 	if err != nil {
 		return nil, err
