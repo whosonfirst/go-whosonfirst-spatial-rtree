@@ -90,7 +90,7 @@ func main() {
 
 	// END OF put me in a WithFlagSet(fs) function
 
-	r, err := db.PointInPolygon(ctx, *c, f)
+	r, err := db.PointInPolygon(ctx, c, f)
 
 	if err != nil {
 		log.Fatalf("Failed to query database with coord %v, %v", c, err)

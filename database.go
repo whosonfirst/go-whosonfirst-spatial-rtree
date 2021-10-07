@@ -242,7 +242,7 @@ func (r *RTreeSpatialDatabase) RemoveFeature(ctx context.Context, id string) err
 	return fmt.Errorf("Not implemented.")
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygon(ctx context.Context, coord orb.Point, filters ...spatial.Filter) (spr.StandardPlacesResults, error) {
+func (r *RTreeSpatialDatabase) PointInPolygon(ctx context.Context, coord *orb.Point, filters ...spatial.Filter) (spr.StandardPlacesResults, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -282,7 +282,7 @@ func (r *RTreeSpatialDatabase) PointInPolygon(ctx context.Context, coord orb.Poi
 	return spr_results, nil
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonWithChannels(ctx context.Context, rsp_ch chan spr.StandardPlacesResult, err_ch chan error, done_ch chan bool, coord orb.Point, filters ...spatial.Filter) {
+func (r *RTreeSpatialDatabase) PointInPolygonWithChannels(ctx context.Context, rsp_ch chan spr.StandardPlacesResult, err_ch chan error, done_ch chan bool, coord *orb.Point, filters ...spatial.Filter) {
 
 	defer func() {
 		done_ch <- true
@@ -299,7 +299,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonWithChannels(ctx context.Context, r
 	return
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coord orb.Point, filters ...spatial.Filter) ([]*spatial.PointInPolygonCandidate, error) {
+func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coord *orb.Point, filters ...spatial.Filter) ([]*spatial.PointInPolygonCandidate, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -335,7 +335,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidates(ctx context.Context, coo
 	return candidates, nil
 }
 
-func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.Context, rsp_ch chan *spatial.PointInPolygonCandidate, err_ch chan error, done_ch chan bool, coord orb.Point, filters ...spatial.Filter) {
+func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.Context, rsp_ch chan *spatial.PointInPolygonCandidate, err_ch chan error, done_ch chan bool, coord *orb.Point, filters ...spatial.Filter) {
 
 	defer func() {
 		done_ch <- true
@@ -368,7 +368,7 @@ func (r *RTreeSpatialDatabase) PointInPolygonCandidatesWithChannels(ctx context.
 	return
 }
 
-func (r *RTreeSpatialDatabase) getIntersectsByCoord(coord orb.Point) ([]rtreego.Spatial, error) {
+func (r *RTreeSpatialDatabase) getIntersectsByCoord(coord *orb.Point) ([]rtreego.Spatial, error) {
 
 	lat := coord.Y()
 	lon := coord.X()
@@ -392,7 +392,7 @@ func (r *RTreeSpatialDatabase) getIntersectsByRect(rect *rtreego.Rect) ([]rtreeg
 	return results, nil
 }
 
-func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, rsp_ch chan spr.StandardPlacesResult, err_ch chan error, possible []rtreego.Spatial, c orb.Point, filters ...spatial.Filter) {
+func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, rsp_ch chan spr.StandardPlacesResult, err_ch chan error, possible []rtreego.Spatial, c *orb.Point, filters ...spatial.Filter) {
 
 	seen := make(map[string]bool)
 
@@ -474,9 +474,9 @@ func (r *RTreeSpatialDatabase) inflateResultsWithChannels(ctx context.Context, r
 
 			switch geom_type {
 			case "Polygon":
-				contains = planar.PolygonContains(orb_geom.(orb.Polygon), c)
+				contains = planar.PolygonContains(orb_geom.(orb.Polygon), *c)
 			case "MultiPolygon":
-				contains = planar.MultiPolygonContains(orb_geom.(orb.MultiPolygon), c)
+				contains = planar.MultiPolygonContains(orb_geom.(orb.MultiPolygon), *c)
 			default:
 				r.Logger.Printf("Geometry has unsupported geometry type '%s'", geom.Type)
 			}
