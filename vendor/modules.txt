@@ -19,12 +19,13 @@ github.com/natefinch/atomic
 ## explicit
 github.com/patrickmn/go-cache
 # github.com/paulmach/go.geojson v1.4.0
-## explicit
 github.com/paulmach/go.geojson
 # github.com/paulmach/orb v0.2.2
 ## explicit
 github.com/paulmach/orb
 github.com/paulmach/orb/geojson
+github.com/paulmach/orb/internal/length
+github.com/paulmach/orb/planar
 # github.com/sfomuseum/go-edtf v0.3.0
 github.com/sfomuseum/go-edtf
 github.com/sfomuseum/go-edtf/calendar
@@ -60,7 +61,7 @@ github.com/whosonfirst/go-reader
 github.com/whosonfirst/go-sanitize
 # github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
 github.com/whosonfirst/go-whosonfirst-crawl
-# github.com/whosonfirst/go-whosonfirst-feature v0.0.8
+# github.com/whosonfirst/go-whosonfirst-feature v0.0.12
 ## explicit
 github.com/whosonfirst/go-whosonfirst-feature/alt
 github.com/whosonfirst/go-whosonfirst-feature/geometry
@@ -91,7 +92,7 @@ github.com/whosonfirst/go-whosonfirst-placetypes/placetypes
 # github.com/whosonfirst/go-whosonfirst-sources v0.1.0
 github.com/whosonfirst/go-whosonfirst-sources
 github.com/whosonfirst/go-whosonfirst-sources/sources
-# github.com/whosonfirst/go-whosonfirst-spatial v0.1.2
+# github.com/whosonfirst/go-whosonfirst-spatial v0.3.0
 ## explicit
 github.com/whosonfirst/go-whosonfirst-spatial
 github.com/whosonfirst/go-whosonfirst-spatial/database

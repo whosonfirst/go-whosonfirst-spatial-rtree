@@ -130,6 +130,8 @@ github.com/whosonfirst/go-whosonfirst-feature v0.0.7 h1:KweSqcJenzI01zCgbVUzjAlz
 github.com/whosonfirst/go-whosonfirst-feature v0.0.7/go.mod h1:NhUZ9XDyqQiOipFIBvbmixwfM6jtSzP2lX5dxcWX5uw=
 github.com/whosonfirst/go-whosonfirst-feature v0.0.8 h1:aV69OrJ+M1TgqcI5fwiUFE92CNTLe5+K4BZ3rbVDCJU=
 github.com/whosonfirst/go-whosonfirst-feature v0.0.8/go.mod h1:NhUZ9XDyqQiOipFIBvbmixwfM6jtSzP2lX5dxcWX5uw=
+github.com/whosonfirst/go-whosonfirst-feature v0.0.12 h1:SNZdeOhQ4XXid4g4iJ5/H6y0tU4rOGn/41M/knVgFMM=
+github.com/whosonfirst/go-whosonfirst-feature v0.0.12/go.mod h1:NhUZ9XDyqQiOipFIBvbmixwfM6jtSzP2lX5dxcWX5uw=
 github.com/whosonfirst/go-whosonfirst-flags v0.1.0 h1:llb2wtsI2y+gHZCmWaamMCx4YDRE8ZXQRRYqC7qB4so=
 github.com/whosonfirst/go-whosonfirst-flags v0.1.0/go.mod h1:bovMiQphaVhqemXFmNVf9Ts0tqnWtzHRFMUSKX+zTE8=
 github.com/whosonfirst/go-whosonfirst-flags v0.2.0 h1:zia/L+rhKSQ5iruITPnwU9lqsd1SavvF+HYRubEARSs=
@@ -218,6 +220,10 @@ github.com/whosonfirst/go-whosonfirst-spatial v0.1.0 h1:hhwpo3bJb9DlNJYyfFCHjcTL
 github.com/whosonfirst/go-whosonfirst-spatial v0.1.0/go.mod h1:KAGHrl3IfmGKuU1OU94uG/y3hVLJXzoNzuuwh0k9LSE=
 github.com/whosonfirst/go-whosonfirst-spatial v0.1.2 h1:9MSOwJI4IQhAcmdA5KdyOV/JCJwM872CadcYltmEl+M=
 github.com/whosonfirst/go-whosonfirst-spatial v0.1.2/go.mod h1:KAGHrl3IfmGKuU1OU94uG/y3hVLJXzoNzuuwh0k9LSE=
+github.com/whosonfirst/go-whosonfirst-spatial v0.2.0 h1:ahUfh/49ERDzluyANV9TFetMBzz9gQMSuaQIB/ZaDIs=
+github.com/whosonfirst/go-whosonfirst-spatial v0.2.0/go.mod h1:8n+F9dvUdjE8jlOsvWqjzGKxW1yVgh5QKgh93bEkA1k=
+github.com/whosonfirst/go-whosonfirst-spatial v0.3.0 h1:qsz1rLQrrHhB4TiNnMN+ATyk5VSSCdCtsQfuFOrVAMo=
+github.com/whosonfirst/go-whosonfirst-spatial v0.3.0/go.mod h1:+672r9isi4z38+J3F7zJCNL5r0XDvSaNU0QSX05DDhw=
 github.com/whosonfirst/go-whosonfirst-spr v0.1.0 h1:5qE629nCiucF2upy5NjPOEl9cFatsljykYY0l2JKgAk=
 github.com/whosonfirst/go-whosonfirst-spr v0.1.0/go.mod h1:R8GtEVz1GVSnwwOjzcoVUd172ZK26Q7hQSLI6SGG7lM=
 github.com/whosonfirst/go-whosonfirst-spr/v2 v2.0.0 h1:UQ1n/uODS50mckZpXYe5GKm8XwoUUC1jRcNN8oiW2uc=
