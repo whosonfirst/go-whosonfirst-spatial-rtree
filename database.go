@@ -48,6 +48,7 @@ type RTreeSpatialDatabase struct {
 	Timer           *timer.Timer
 	index_alt_files bool
 	rtree           *rtreego.Rtree
+	rtree_lookup    *sync.Map
 	gocache         *gocache.Cache
 	mu              *sync.RWMutex
 	strict          bool
@@ -139,6 +140,7 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 
 	rtree := rtreego.NewTree(2, 25, 50)
 
+	lookup := new(sync.Map)
 	mu := new(sync.RWMutex)
 
 	t := timer.NewTimer()
@@ -147,6 +149,7 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 		Logger:          logger,
 		Timer:           t,
 		rtree:           rtree,
+		rtree_lookup:    lookup,
 		index_alt_files: index_alt_files,
 		gocache:         gc,
 		strict:          strict,
@@ -222,7 +225,7 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 
 		r.Logger.Printf("index %s %v", sp_id, rect)
 
-		sp := RTreeSpatialIndex{
+		sp := &RTreeSpatialIndex{
 			Rect:      rect,
 			Id:        sp_id,
 			FeatureId: feature_id,
@@ -231,7 +234,11 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 		}
 
 		r.mu.Lock()
-		r.rtree.Insert(&sp)
+		r.rtree.Insert(sp)
+
+		fmt.Println("ADD ", sp_id)
+		r.rtree_lookup.Store(sp_id, rect)
+
 		r.mu.Unlock()
 	}
 
@@ -239,7 +246,28 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 }
 
 func (r *RTreeSpatialDatabase) RemoveFeature(ctx context.Context, id string) error {
-	return fmt.Errorf("Not implemented.")
+
+	fmt.Println("REMOVE ", id)
+	
+	v, ok := r.rtree_lookup.Load(id)
+
+	if !ok {
+		return nil
+	}
+
+	rect := v.(*rtreego.Rect)
+
+	sp := &RTreeSpatialIndex{
+		Rect: rect,
+	}
+
+	ok = r.rtree.Delete(sp)
+
+	if !ok {
+		return fmt.Errorf("Failed to remove %s from rtree", id)
+	}
+
+	return nil
 }
 
 func (r *RTreeSpatialDatabase) PointInPolygon(ctx context.Context, coord *orb.Point, filters ...spatial.Filter) (spr.StandardPlacesResults, error) {
