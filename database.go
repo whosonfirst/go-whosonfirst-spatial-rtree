@@ -196,7 +196,11 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 		return err
 	}
 
-	for i, bbox := range bboxes.Bounds() {
+	bounds := bboxes.Bounds()
+
+	indices := make([]*RTreeSpatialIndex, len(bounds))
+
+	for i, bbox := range bounds {
 
 		sp_id, err := spatial.SpatialIdWithFeature(body, i)
 
@@ -236,35 +240,32 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 		r.mu.Lock()
 		r.rtree.Insert(sp)
 
-		fmt.Println("ADD ", sp_id)
-		r.rtree_lookup.Store(sp_id, rect)
-
+		indices[i] = sp
 		r.mu.Unlock()
 	}
+
+	r.rtree_lookup.Store(feature_id, indices)
 
 	return nil
 }
 
 func (r *RTreeSpatialDatabase) RemoveFeature(ctx context.Context, id string) error {
 
-	fmt.Println("REMOVE ", id)
-	
 	v, ok := r.rtree_lookup.Load(id)
 
 	if !ok {
 		return nil
 	}
 
-	rect := v.(*rtreego.Rect)
+	indices := v.([]*RTreeSpatialIndex)
 
-	sp := &RTreeSpatialIndex{
-		Rect: rect,
-	}
+	for idx, sp := range indices {
 
-	ok = r.rtree.Delete(sp)
+		ok = r.rtree.Delete(sp)
 
-	if !ok {
-		return fmt.Errorf("Failed to remove %s from rtree", id)
+		if !ok {
+			return fmt.Errorf("Failed to remove %s (%d) from rtree", id, idx)
+		}
 	}
 
 	return nil
