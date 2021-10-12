@@ -26,6 +26,7 @@ import (
 	"log"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -48,7 +49,6 @@ type RTreeSpatialDatabase struct {
 	Timer           *timer.Timer
 	index_alt_files bool
 	rtree           *rtreego.Rtree
-	rtree_lookup    *sync.Map
 	gocache         *gocache.Cache
 	mu              *sync.RWMutex
 	strict          bool
@@ -140,7 +140,6 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 
 	rtree := rtreego.NewTree(2, 25, 50)
 
-	lookup := new(sync.Map)
 	mu := new(sync.RWMutex)
 
 	t := timer.NewTimer()
@@ -149,7 +148,6 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 		Logger:          logger,
 		Timer:           t,
 		rtree:           rtree,
-		rtree_lookup:    lookup,
 		index_alt_files: index_alt_files,
 		gocache:         gc,
 		strict:          strict,
@@ -198,8 +196,6 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 
 	bounds := bboxes.Bounds()
 
-	indices := make([]*RTreeSpatialIndex, len(bounds))
-
 	for i, bbox := range bounds {
 
 		sp_id, err := spatial.SpatialIdWithFeature(body, i)
@@ -240,11 +236,8 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 		r.mu.Lock()
 		r.rtree.Insert(sp)
 
-		indices[i] = sp
 		r.mu.Unlock()
 	}
-
-	r.rtree_lookup.Store(feature_id, indices)
 
 	return nil
 }
@@ -271,21 +264,26 @@ func defaultComparator(obj1, obj2 Spatial) bool {
 
 func (r *RTreeSpatialDatabase) RemoveFeature(ctx context.Context, id string) error {
 
-	v, ok := r.rtree_lookup.Load(id)
-
-	if !ok {
-		return nil
+	obj := &RTreeSpatialIndex{
+		Rect: nil,
+		Id:   id,
 	}
 
-	indices := v.([]*RTreeSpatialIndex)
+	comparator := func(obj1, obj2 rtreego.Spatial) bool {
 
-	for idx, sp := range indices {
+		// 2021/10/12 11:17:11 COMPARE 1: '101737491#:0' 2: '101737491'
+		// log.Printf("COMPARE 1: '%v' 2: '%v'\n", obj1.(*RTreeSpatialIndex).Id, obj2.(*RTreeSpatialIndex).Id)
 
-		ok = r.rtree.Delete(sp)
+		obj1_id := obj1.(*RTreeSpatialIndex).Id
+		obj2_id := obj2.(*RTreeSpatialIndex).Id
 
-		if !ok {
-			return fmt.Errorf("Failed to remove %s (%d) from rtree", id, idx)
-		}
+		return strings.HasPrefix(obj1_id, obj2_id)
+	}
+
+	ok := r.rtree.DeleteWithComparator(obj, comparator)
+
+	if !ok {
+		return fmt.Errorf("Failed to remove %s from rtree", id)
 	}
 
 	return nil
