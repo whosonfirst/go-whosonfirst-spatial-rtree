@@ -249,6 +249,26 @@ func (r *RTreeSpatialDatabase) IndexFeature(ctx context.Context, body []byte) er
 	return nil
 }
 
+/*
+
+TO DO: figure out suitable comparitor
+
+/ DeleteWithComparator removes an object from the tree using a custom
+// comparator for evaluating equalness. This is useful when you want to remove
+// an object from a tree but don't have a pointer to the original object
+// anymore.
+func (tree *Rtree) DeleteWithComparator(obj Spatial, cmp Comparator) bool {
+	n := tree.findLeaf(tree.root, obj, cmp)
+
+// Comparator compares two spatials and returns whether they are equal.
+type Comparator func(obj1, obj2 Spatial) (equal bool)
+
+func defaultComparator(obj1, obj2 Spatial) bool {
+	return obj1 == obj2
+}
+
+*/
+
 func (r *RTreeSpatialDatabase) RemoveFeature(ctx context.Context, id string) error {
 
 	v, ok := r.rtree_lookup.Load(id)
