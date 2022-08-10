@@ -10,7 +10,7 @@ require (
 	github.com/whosonfirst/go-ioutil v1.0.2
 	github.com/whosonfirst/go-whosonfirst-feature v0.0.24
 	github.com/whosonfirst/go-whosonfirst-geojson-v2 v0.16.4
-	github.com/whosonfirst/go-whosonfirst-spatial v0.3.5
+	github.com/whosonfirst/go-whosonfirst-spatial v0.3.6
 	github.com/whosonfirst/go-whosonfirst-spr/v2 v2.2.1
 	github.com/whosonfirst/go-whosonfirst-uri v1.2.0
 )
