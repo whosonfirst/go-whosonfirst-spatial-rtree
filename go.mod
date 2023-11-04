@@ -9,7 +9,7 @@ require (
 	github.com/sfomuseum/go-flags v0.10.0
 	github.com/whosonfirst/go-ioutil v1.0.2
 	github.com/whosonfirst/go-whosonfirst-feature v0.0.26
-	github.com/whosonfirst/go-whosonfirst-spatial v0.6.0
+	github.com/whosonfirst/go-whosonfirst-spatial v0.7.1
 	github.com/whosonfirst/go-whosonfirst-spr/v2 v2.3.6
 	github.com/whosonfirst/go-whosonfirst-uri v1.3.0
 )
