@@ -1,6 +1,8 @@
 module github.com/whosonfirst/go-whosonfirst-spatial-rtree
 
-go 1.18
+go 1.22.1
+
+toolchain go1.22.3
 
 require (
 	github.com/dhconnelly/rtreego v1.2.0
@@ -9,7 +11,7 @@ require (
 	github.com/sfomuseum/go-flags v0.10.0
 	github.com/whosonfirst/go-ioutil v1.0.2
 	github.com/whosonfirst/go-whosonfirst-feature v0.0.27
-	github.com/whosonfirst/go-whosonfirst-spatial v0.7.3
+	github.com/whosonfirst/go-whosonfirst-spatial v0.7.4
 	github.com/whosonfirst/go-whosonfirst-spr/v2 v2.3.7
 	github.com/whosonfirst/go-whosonfirst-uri v1.3.0
 )

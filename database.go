@@ -151,7 +151,7 @@ func NewRTreeSpatialDatabase(ctx context.Context, uri string) (database.SpatialD
 	return db, nil
 }
 
-func (r *RTreeSpatialDatabase) Close(ctx context.Context) error {
+func (r *RTreeSpatialDatabase) Disconnect(ctx context.Context) error {
 	return nil
 }
 
