@@ -6,6 +6,10 @@ In-memory implementation of the go-whosonfirst-spatial interfaces.
 
 This is work in progress. Documentation remains incomplete.
 
+## Deprecation notice (May, 2024)
+
+This package will be retired shortly once [work to fold it in to `whosonfirst/go-whosonfirst-spatial](https://github.com/whosonfirst/go-whosonfirst-spatial/issues/39) is completed.
+
 ## Interfaces
 
 This package implements the following [go-whosonfirst-spatial](#) interfaces.
