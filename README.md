@@ -8,7 +8,7 @@ This is work in progress. Documentation remains incomplete.
 
 ## Deprecation notice (May, 2024)
 
-This package will be retired shortly once [work to fold it in to `whosonfirst/go-whosonfirst-spatial](https://github.com/whosonfirst/go-whosonfirst-spatial/issues/39) is completed.
+This package has been deprecated and folded in to the [whosonfirst/go-whosonfirst-spatial](https://github.com/whosonfirst/go-whosonfirst-spatial) package as of v0.9.0. It is no longer maintained.
 
 ## Interfaces
 
